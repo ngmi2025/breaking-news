@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const corsProxy = 'https://api.allorigins.win/raw?url=';
     const rssSources = [
         { url: 'https://onemileatatime.com/feed/', name: 'One Mile at a Time' },
-        { url: 'https://thepointsguy.com/feed/', name: 'The Points Guy' },
         { url: 'https://frequentmiler.com/feed/', name: 'Frequent Miler' },
     ];
 const fetchNews = async () => {
@@ -18,33 +17,28 @@ const fetchNews = async () => {
             items.forEach(el => {
                 const pubDate = new Date(el.querySelector("pubDate").textContent);
                 if (Date.now() - pubDate <= 48 * 60 * 60 * 1000) { // Within last 48 hours
-                    // Count comments
-                    const commentCount = el.querySelectorAll("wp\\:comment").length;
-
-                    // Parse shares (this might need adjustment based on actual feed structure)
-                    let shareCount = 0;
-                    const contentEl = el.querySelector("content\\:encoded");
-                    if (contentEl) {
-                        const shareMatch = contentEl.textContent.match(/(\d+)\s+shares/i);
-                        if (shareMatch) {
-                            shareCount = parseInt(shareMatch[1]) || 0;
-                        }
-                    }
-
-                    const updateDate = el.querySelector("atom\\:updated") ? 
-                        new Date(el.querySelector("atom\\:updated").textContent) : pubDate;
-                    const isFeatured = el.querySelector("category[domain='featured']") !== null;
-
-                    allNews.push({
-                        title: el.querySelector("title").textContent,
-                        link: el.querySelector("link").textContent,
-                        pubDate: pubDate,
-                        updateDate: updateDate,
-                        source: source.name,
-                        commentCount: commentCount,
-                        shareCount: shareCount,
-                        isFeatured: isFeatured
-                    });
+                    const link = el.querySelector("link").textContent;
+                    const commentCount = el.querySelectorAll("item").length;
+                    
+                    // Fetch the actual page to get share count
+                    fetch(`${corsProxy}${encodeURIComponent(link)}`)
+                        .then(response => response.text())
+                        .then(html => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+                            const shareCountElement = doc.querySelector('.essb_totalcount');
+                            const shareCount = shareCountElement ? parseInt(shareCountElement.textContent) : 0;
+                            
+                            allNews.push({
+                                title: el.querySelector("title").textContent,
+                                link: link,
+                                pubDate: pubDate,
+                                source: source.name,
+                                commentCount: commentCount,
+                                shareCount: shareCount
+                            });
+                        })
+                        .catch(error => console.error('Error fetching share count:', error));
                 }
             });
         } catch (error) {
