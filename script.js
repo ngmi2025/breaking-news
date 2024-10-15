@@ -100,15 +100,12 @@ const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
     };
 
 const calculatePopularityScore = (article) => {
-    const hoursAgo = (Date.now() - article.pubDate) / 3600000;
-    const recencyScore = Math.max(0, 48 - hoursAgo) / 48; // 0 to 1, higher for more recent
-    const commentScore = article.commentCount / 20; // Normalize comment count
-    const shareScore = article.shareCount / 500; // Normalize share count, assuming more shares than comments
+    const commentScore = article.commentCount || 0;
+    const shareScore = (article.shareCount || 0) * 0.1; // Giving less weight to shares as they're often more numerous
     
-    // Weighted sum of scores
-    return (commentScore * 0.35) + (shareScore * 0.45) + (recencyScore * 0.2);
+    // Weighted sum of scores, removing recency
+    return (commentScore * 0.6) + (shareScore * 0.4);
 };
-
     const rankNews = (news) => {
         return news.sort((a, b) => {
             const scoreA = calculatePopularityScore(a);
@@ -135,13 +132,15 @@ const displayNews = (news) => {
             </thead>
             <tbody>
     `;
-    news.forEach(item => {
+    news.slice(0, 20).forEach(item => {
         console.log('Displaying item:', item);
-        const popularityScore = calculatePopularityScore(item);
+        const commentCount = item.commentCount !== undefined ? item.commentCount : 0;
+        const shareCount = item.shareCount !== undefined ? item.shareCount : 0;
+        const popularityScore = calculatePopularityScore({...item, commentCount, shareCount});
         let popularityRank;
-        if (popularityScore > 0.66) {
+        if (popularityScore > 50) {
             popularityRank = 'High';
-        } else if (popularityScore > 0.33) {
+        } else if (popularityScore > 10) {
             popularityRank = 'Medium';
         } else {
             popularityRank = 'Low';
@@ -151,8 +150,8 @@ const displayNews = (news) => {
                 <td><a href="${item.link}" target="_blank">${item.title}</a></td>
                 <td>${new Date(item.pubDate).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                 <td>${item.source}</td>
-                <td>${item.commentCount}</td>
-                <td>${item.shareCount}</td>
+                <td>${commentCount}</td>
+                <td>${shareCount}</td>
                 <td>${item.isFeatured ? 'Yes' : 'No'}</td>
                 <td>${popularityRank}</td>
                 <td><button onclick="generateAngles('${item.title}')">Generate</button></td>
