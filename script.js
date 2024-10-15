@@ -138,6 +138,14 @@ const displayNews = (news) => {
     news.forEach(item => {
         console.log('Displaying item:', item);
         const popularityScore = calculatePopularityScore(item);
+        let popularityRank;
+        if (popularityScore > 0.66) {
+            popularityRank = 'High';
+        } else if (popularityScore > 0.33) {
+            popularityRank = 'Medium';
+        } else {
+            popularityRank = 'Low';
+        }
         html += `
             <tr>
                 <td><a href="${item.link}" target="_blank">${item.title}</a></td>
@@ -146,7 +154,7 @@ const displayNews = (news) => {
                 <td>${item.commentCount}</td>
                 <td>${item.shareCount}</td>
                 <td>${item.isFeatured ? 'Yes' : 'No'}</td>
-                <td>${popularityScore.toFixed(2)}</td>
+                <td>${popularityRank}</td>
                 <td><button onclick="generateAngles('${item.title}')">Generate</button></td>
             </tr>
         `;
