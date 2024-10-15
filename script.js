@@ -102,11 +102,11 @@ const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
 const calculatePopularityScore = (article) => {
     const hoursAgo = (Date.now() - article.pubDate) / 3600000;
     const recencyScore = Math.max(0, 48 - hoursAgo) / 48; // 0 to 1, higher for more recent
-    const commentScore = article.commentCount / 10; // Normalize comment count
-    const shareScore = article.shareCount / 100; // Normalize share count
+    const commentScore = article.commentCount / 20; // Normalize comment count
+    const shareScore = article.shareCount / 500; // Normalize share count, assuming more shares than comments
     
     // Weighted sum of scores
-    return (commentScore * 0.4) + (shareScore * 0.4) + (recencyScore * 0.2);
+    return (commentScore * 0.35) + (shareScore * 0.45) + (recencyScore * 0.2);
 };
 
     const rankNews = (news) => {
