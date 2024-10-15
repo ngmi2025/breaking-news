@@ -99,14 +99,15 @@ const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
         return allNews;
     };
 
-    const calculatePopularityScore = (article) => {
-        const hoursAgo = (Date.now() - article.pubDate) / 3600000;
-        const recencyScore = Math.max(0, 48 - hoursAgo) / 48; // 0 to 1, higher for more recent
-        const updateScore = (article.updateDate > article.pubDate) ? 0.2 : 0;
-        const featuredScore = article.isFeatured ? 0.3 : 0;
-        const engagementScore = (article.commentCount / 100) + (article.shareCount / 1000); // Normalize comment and share counts
-        return recencyScore * 0.3 + updateScore + featuredScore + engagementScore * 0.2;
-    };
+const calculatePopularityScore = (article) => {
+    const hoursAgo = (Date.now() - article.pubDate) / 3600000;
+    const recencyScore = Math.max(0, 48 - hoursAgo) / 48; // 0 to 1, higher for more recent
+    const commentScore = article.commentCount / 10; // Normalize comment count
+    const shareScore = article.shareCount / 100; // Normalize share count
+    
+    // Weighted sum of scores
+    return (commentScore * 0.4) + (shareScore * 0.4) + (recencyScore * 0.2);
+};
 
     const rankNews = (news) => {
         return news.sort((a, b) => {
