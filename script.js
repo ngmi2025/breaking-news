@@ -5,66 +5,84 @@ document.addEventListener('DOMContentLoaded', () => {
         { url: 'https://onemileatatime.com/feed/', name: 'One Mile at a Time' },
         { url: 'https://frequentmiler.com/feed/', name: 'Frequent Miler' },
     ];
-const corsProxy = 'https://api.allorigins.win/raw?url=';
 
-const fetchNews = async () => {
-    let allNews = [];
-    const fetchPromises = [];
+    const extractCounts = (doc, source) => {
+        let commentCount = 0;
+        let shareCount = 0;
 
-    for (const source of rssSources) {
-        try {
-            console.log(`Fetching RSS feed for ${source.name}`);
-            const response = await fetch(`${corsProxy}${encodeURIComponent(source.url)}`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const str = await response.text();
-            const data = new window.DOMParser().parseFromString(str, "text/xml");
-            const items = data.querySelectorAll("item");
-
-            items.forEach(el => {
-                const pubDate = new Date(el.querySelector("pubDate").textContent);
-                if (Date.now() - pubDate <= 48 * 60 * 60 * 1000) { // Within last 48 hours
-                    const link = el.querySelector("link").textContent;
-                    console.log(`Fetching article page: ${link}`);
-                    
-                    const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
-                        .then(response => response.text())
-                        .then(html => {
-                            const parser = new DOMParser();
-                            const doc = parser.parseFromString(html, 'text/html');
-                            
-                            // Extract comment count (adjust selector as needed)
-                            const commentCountEl = doc.querySelector('.comment-count');
-                            const commentCount = commentCountEl ? parseInt(commentCountEl.textContent) : 0;
-                            
-                            // Extract share count (adjust selector as needed)
-                            const shareCountEl = doc.querySelector('.share-count');
-                            const shareCount = shareCountEl ? parseInt(shareCountEl.textContent) : 0;
-                            
-                            console.log(`Article parsed: Comments - ${commentCount}, Shares - ${shareCount}`);
-
-                            allNews.push({
-                                title: el.querySelector("title").textContent,
-                                link: link,
-                                pubDate: pubDate,
-                                source: source.name,
-                                commentCount: commentCount,
-                                shareCount: shareCount
-                            });
-                        })
-                        .catch(error => console.error(`Error fetching article ${link}:`, error));
-                    
-                    fetchPromises.push(fetchPromise);
-                }
-            });
-        } catch (error) {
-            console.error(`Error fetching news from ${source.name}:`, error);
+        if (source === 'One Mile at a Time') {
+            const commentCountEl = doc.querySelector('.post-comments.text-warning.number-of-comments .number');
+            commentCount = commentCountEl ? parseInt(commentCountEl.textContent) : 0;
+            // Note: We don't have share count information for One Mile at a Time
+        } else if (source === 'Frequent Miler') {
+            // Extract share count
+            const shareCountEl = doc.querySelector('.st-total .st-label');
+            shareCount = shareCountEl ? parseInt(shareCountEl.textContent) : 0;
+            
+            // Extract comment count
+            const commentCountEl = doc.querySelector('.td-post-comments');
+            if (commentCountEl) {
+                const commentText = commentCountEl.textContent.trim();
+                commentCount = parseInt(commentText) || 0;
+            }
         }
-    }
 
-    await Promise.all(fetchPromises);
-    console.log('All articles fetched and parsed');
-    return allNews;
-};
+        return { commentCount, shareCount };
+    };
+
+    const fetchNews = async () => {
+        let allNews = [];
+        const fetchPromises = [];
+
+        for (const source of rssSources) {
+            try {
+                console.log(`Fetching RSS feed for ${source.name}`);
+                const response = await fetch(`${corsProxy}${encodeURIComponent(source.url)}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const str = await response.text();
+                const data = new window.DOMParser().parseFromString(str, "text/xml");
+                const items = data.querySelectorAll("item");
+
+                items.forEach(el => {
+                    const pubDate = new Date(el.querySelector("pubDate").textContent);
+                    if (Date.now() - pubDate <= 48 * 60 * 60 * 1000) { // Within last 48 hours
+                        const link = el.querySelector("link").textContent;
+                        console.log(`Fetching article page: ${link}`);
+                        
+                        const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
+                            .then(response => response.text())
+                            .then(html => {
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(html, 'text/html');
+                                
+                                const { commentCount, shareCount } = extractCounts(doc, source.name);
+                                
+                                console.log(`Article parsed: Comments - ${commentCount}, Shares - ${shareCount}`);
+
+                                allNews.push({
+                                    title: el.querySelector("title").textContent,
+                                    link: link,
+                                    pubDate: pubDate,
+                                    source: source.name,
+                                    commentCount: commentCount,
+                                    shareCount: shareCount
+                                });
+                            })
+                            .catch(error => console.error(`Error fetching article ${link}:`, error));
+                        
+                        fetchPromises.push(fetchPromise);
+                    }
+                });
+            } catch (error) {
+                console.error(`Error fetching news from ${source.name}:`, error);
+            }
+        }
+
+        await Promise.all(fetchPromises);
+        console.log('All articles fetched and parsed');
+        return allNews;
+    };
+
     const calculatePopularityScore = (article) => {
         const hoursAgo = (Date.now() - article.pubDate) / 3600000;
         const recencyScore = Math.max(0, 48 - hoursAgo) / 48; // 0 to 1, higher for more recent
