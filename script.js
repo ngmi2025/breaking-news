@@ -81,7 +81,7 @@ const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
                     commentCount: commentCount,
                     shareCount: shareCount
                 });
-            }, 2000); // 2 second delay
+            }, 5000); // 5 second delay
         });
     })
     .catch(error => console.error(`Error fetching article ${link}:`, error));
@@ -113,47 +113,46 @@ const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
             const scoreA = calculatePopularityScore(a);
             const scoreB = calculatePopularityScore(b);
             return scoreB - scoreA;
-        }).slice(0, 10); // Get top 10
+        }).slice(0, 20); // Get top 20
     };
 
-    const displayNews = (news) => {
-        let html = `
-            <table>
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Published Date</th>
-                        <th>Updated</th>
-                        <th>Source</th>
-                        <th>Comments</th>
-                        <th>Shares</th>
-                        <th>Featured</th>
-                        <th>Popularity</th>
-                        <th>Generate Angle</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        news.forEach(item => {
-            console.log('Displaying item:', item);
-            const popularityScore = calculatePopularityScore(item);
-            html += `
+const displayNews = (news) => {
+    console.log('News to display:', news);
+    let html = `
+        <table>
+            <thead>
                 <tr>
-                    <td><a href="${item.link}" target="_blank">${item.title}</a></td>
-                    <td>${item.pubDate.toLocaleString()}</td>
-                    <td>${item.updateDate > item.pubDate ? item.updateDate.toLocaleString() : 'N/A'}</td>
-                    <td>${item.source}</td>
-                    <td>${item.commentCount}</td>
-                    <td>${item.shareCount}</td>
-                    <td>${item.isFeatured ? 'Yes' : 'No'}</td>
-                    <td>${popularityScore.toFixed(2)}</td>
-                    <td><button onclick="generateAngles('${item.title}')">Generate</button></td>
+                    <th>Title</th>
+                    <th>Published Date</th>
+                    <th>Source</th>
+                    <th>Comments</th>
+                    <th>Shares</th>
+                    <th>Featured</th>
+                    <th>Popularity</th>
+                    <th>Generate Angle</th>
                 </tr>
-            `;
-        });
-        html += '</tbody></table>';
-        newsContainer.innerHTML = html;
-    };
+            </thead>
+            <tbody>
+    `;
+    news.forEach(item => {
+        console.log('Displaying item:', item);
+        const popularityScore = calculatePopularityScore(item);
+        html += `
+            <tr>
+                <td><a href="${item.link}" target="_blank">${item.title}</a></td>
+                <td>${new Date(item.pubDate).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                <td>${item.source}</td>
+                <td>${item.commentCount}</td>
+                <td>${item.shareCount}</td>
+                <td>${item.isFeatured ? 'Yes' : 'No'}</td>
+                <td>${popularityScore.toFixed(2)}</td>
+                <td><button onclick="generateAngles('${item.title}')">Generate</button></td>
+            </tr>
+        `;
+    });
+    html += '</tbody></table>';
+    newsContainer.innerHTML = html;
+};
 
     const loadNews = async () => {
         newsContainer.innerHTML = '<p>Loading... please wait and don\'t refresh</p>';
