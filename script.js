@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { url: 'https://onemileatatime.com/feed/', name: 'One Mile at a Time' },
         { url: 'https://thepointsguy.com/feed/', name: 'The Points Guy' },
         { url: 'https://frequentmiler.com/feed/', name: 'Frequent Miler' },
-        // Add more RSS feeds here
     ];
 
     const fetchNews = async () => {
@@ -20,15 +19,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 items.forEach(el => {
                     const pubDate = new Date(el.querySelector("pubDate").textContent);
                     if (Date.now() - pubDate <= 48 * 60 * 60 * 1000) { // Within last 48 hours
-                        const commentCount = el.querySelector("slash\\:comments") ? 
-                            parseInt(el.querySelector("slash\\:comments").textContent) : 0;
+                        const commentCount = el.querySelectorAll("comment").length;
+                        const updateDate = el.querySelector("atom\\:updated") ? 
+                            new Date(el.querySelector("atom\\:updated").textContent) : pubDate;
+                        const isFeatured = el.querySelector("category[domain='featured']") !== null;
+                        const shareCount = parseInt(el.querySelector("shareCount") ? el.querySelector("shareCount").textContent : "0");
                         allNews.push({
                             title: el.querySelector("title").textContent,
                             link: el.querySelector("link").textContent,
                             pubDate: pubDate,
+                            updateDate: updateDate,
                             source: source.name,
-                            views: Math.floor(Math.random() * 1000) + 100, // Simulated view count
-                            commentCount: commentCount
+                            commentCount: commentCount,
+                            isFeatured: isFeatured,
+                            shareCount: shareCount
                         });
                     }
                 });
@@ -42,8 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const calculatePopularityScore = (article) => {
         const hoursAgo = (Date.now() - article.pubDate) / 3600000;
         const recencyScore = Math.max(0, 48 - hoursAgo) / 48; // 0 to 1, higher for more recent
-        const engagementScore = (article.views + article.commentCount * 10) / 1000; // Assuming comments are more valuable
-        return recencyScore * 0.3 + engagementScore * 0.7; // Weighted combination
+        const updateScore = (article.updateDate > article.pubDate) ? 0.2 : 0;
+        const featuredScore = article.isFeatured ? 0.3 : 0;
+        const engagementScore = (article.commentCount / 100) + (article.shareCount / 1000); // Normalize comment and share counts
+        return recencyScore * 0.3 + updateScore + featuredScore + engagementScore * 0.2;
     };
 
     const rankNews = (news) => {
@@ -61,8 +67,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <tr>
                         <th>Title</th>
                         <th>Published Date</th>
+                        <th>Updated</th>
                         <th>Source</th>
                         <th>Comments</th>
+                        <th>Shares</th>
+                        <th>Featured</th>
                         <th>Popularity</th>
                         <th>Generate Angle</th>
                     </tr>
@@ -75,8 +84,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 <tr>
                     <td><a href="${item.link}" target="_blank">${item.title}</a></td>
                     <td>${item.pubDate.toLocaleString()}</td>
+                    <td>${item.updateDate > item.pubDate ? item.updateDate.toLocaleString() : 'N/A'}</td>
                     <td>${item.source}</td>
                     <td>${item.commentCount}</td>
+                    <td>${item.shareCount}</td>
+                    <td>${item.isFeatured ? 'Yes' : 'No'}</td>
                     <td>${popularityScore.toFixed(2)}</td>
                     <td><button onclick="generateAngles('${item.title}')">Generate</button></td>
                 </tr>
