@@ -18,16 +18,11 @@ const fetchNews = async () => {
             items.forEach(el => {
                 const pubDate = new Date(el.querySelector("pubDate").textContent);
                 if (Date.now() - pubDate <= 48 * 60 * 60 * 1000) { // Within last 48 hours
-                    let commentCount = 0;
-                    let shareCount = 0;
-
-                    // Parse comments
-                    const commentEl = el.querySelector("slash\\:comments, wp\\:comment_count");
-                    if (commentEl) {
-                        commentCount = parseInt(commentEl.textContent) || 0;
-                    }
+                    // Count comments
+                    const commentCount = el.querySelectorAll("wp\\:comment").length;
 
                     // Parse shares (this might need adjustment based on actual feed structure)
+                    let shareCount = 0;
                     const contentEl = el.querySelector("content\\:encoded");
                     if (contentEl) {
                         const shareMatch = contentEl.textContent.match(/(\d+)\s+shares/i);
