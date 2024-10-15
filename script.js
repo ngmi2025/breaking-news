@@ -5,30 +5,43 @@ document.addEventListener('DOMContentLoaded', () => {
         { url: 'https://onemileatatime.com/feed/', name: 'One Mile at a Time' },
         { url: 'https://frequentmiler.com/feed/', name: 'Frequent Miler' },
     ];
+const corsProxy = 'https://api.allorigins.win/raw?url=';
+
 const fetchNews = async () => {
     let allNews = [];
+    const fetchPromises = [];
+
     for (const source of rssSources) {
         try {
+            console.log(`Fetching RSS feed for ${source.name}`);
             const response = await fetch(`${corsProxy}${encodeURIComponent(source.url)}`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const str = await response.text();
             const data = new window.DOMParser().parseFromString(str, "text/xml");
             const items = data.querySelectorAll("item");
+
             items.forEach(el => {
                 const pubDate = new Date(el.querySelector("pubDate").textContent);
                 if (Date.now() - pubDate <= 48 * 60 * 60 * 1000) { // Within last 48 hours
                     const link = el.querySelector("link").textContent;
-                    const commentCount = el.querySelectorAll("item").length;
+                    console.log(`Fetching article page: ${link}`);
                     
-                    // Fetch the actual page to get share count
-                    fetch(`${corsProxy}${encodeURIComponent(link)}`)
+                    const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
                         .then(response => response.text())
                         .then(html => {
                             const parser = new DOMParser();
                             const doc = parser.parseFromString(html, 'text/html');
-                            const shareCountElement = doc.querySelector('.essb_totalcount');
-                            const shareCount = shareCountElement ? parseInt(shareCountElement.textContent) : 0;
                             
+                            // Extract comment count (adjust selector as needed)
+                            const commentCountEl = doc.querySelector('.comment-count');
+                            const commentCount = commentCountEl ? parseInt(commentCountEl.textContent) : 0;
+                            
+                            // Extract share count (adjust selector as needed)
+                            const shareCountEl = doc.querySelector('.share-count');
+                            const shareCount = shareCountEl ? parseInt(shareCountEl.textContent) : 0;
+                            
+                            console.log(`Article parsed: Comments - ${commentCount}, Shares - ${shareCount}`);
+
                             allNews.push({
                                 title: el.querySelector("title").textContent,
                                 link: link,
@@ -38,13 +51,18 @@ const fetchNews = async () => {
                                 shareCount: shareCount
                             });
                         })
-                        .catch(error => console.error('Error fetching share count:', error));
+                        .catch(error => console.error(`Error fetching article ${link}:`, error));
+                    
+                    fetchPromises.push(fetchPromise);
                 }
             });
         } catch (error) {
             console.error(`Error fetching news from ${source.name}:`, error);
         }
     }
+
+    await Promise.all(fetchPromises);
+    console.log('All articles fetched and parsed');
     return allNews;
 };
     const calculatePopularityScore = (article) => {
