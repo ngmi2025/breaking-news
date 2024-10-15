@@ -1,43 +1,35 @@
 document.addEventListener('DOMContentLoaded', () => {
     const newsContainer = document.getElementById('news-container');
     const corsProxy = 'https://api.allorigins.win/raw?url=';
-const rssSources = [
-    { url: 'https://onemileatatime.com/feed/', name: 'One Mile at a Time' },
-    { url: 'https://frequentmiler.com/feed/', name: 'Frequent Miler' },
-    { url: 'https://viewfromthewing.com/feed/', name: 'View from the Wing' },
+    const rssSources = [
+        { url: 'https://onemileatatime.com/feed/', name: 'One Mile at a Time' },
+        { url: 'https://frequentmiler.com/feed/', name: 'Frequent Miler' },
+        { url: 'https://viewfromthewing.com/feed/', name: 'View from the Wing' },
     ];
 
-const extractCounts = (doc, source) => {
-    let commentCount = 0;
-    let shareCount = 0;
+    const extractCounts = (doc, source) => {
+        let commentCount = 0;
+        let shareCount = 0;
 
-    if (source === 'One Mile at a Time') {
-        const commentCountEl = doc.querySelector('.post-comments.text-warning.number-of-comments .number');
-        commentCount = commentCountEl ? parseInt(commentCountEl.textContent) : 0;
-        // Note: We don't have share count information for One Mile at a Time
-    } else if (source === 'Frequent Miler') {
-        // Extract share count
-        const shareCountEl = doc.querySelector('.st-total .st-label');
-        shareCount = shareCountEl ? parseInt(shareCountEl.textContent) : 0;
-        
-        // Extract comment count
-        const commentCountEl = doc.querySelector('.td-post-comments');
-        if (commentCountEl) {
-            const commentText = commentCountEl.textContent.trim();
-            commentCount = parseInt(commentText) || 0;
+        if (source === 'One Mile at a Time') {
+            const commentCountEl = doc.querySelector('.post-comments.text-warning.number-of-comments .number');
+            commentCount = commentCountEl ? parseInt(commentCountEl.textContent) : 0;
+            console.log('OMAAT Comment Count:', commentCount);
+        } else if (source === 'Frequent Miler' || source === 'View from the Wing') {
+            const shareCountEl = doc.querySelector('.st-total .st-label');
+            shareCount = shareCountEl ? parseInt(shareCountEl.textContent) : 0;
+            console.log(`${source} Share Count:`, shareCount);
+            
+            const commentCountEl = doc.querySelector('.td-post-comments');
+            if (commentCountEl) {
+                const commentText = commentCountEl.textContent.trim();
+                commentCount = parseInt(commentText) || 0;
+            }
+            console.log(`${source} Comment Count:`, commentCount);
         }
-    } else if (source === 'View from the Wing') {
-        // Extract share count
-        const shareCountEl = doc.querySelector('.st-total .st-label');
-        shareCount = shareCountEl ? parseInt(shareCountEl.textContent) : 0;
-        
-        // Extract comment count
-        const commentCountEl = doc.querySelector('.comment-count');
-        commentCount = commentCountEl ? parseInt(commentCountEl.textContent) : 0;
-    }
 
-    return { commentCount, shareCount };
-};
+        return { commentCount, shareCount };
+    };
 
     const fetchNews = async () => {
         let allNews = [];
@@ -76,6 +68,7 @@ const extractCounts = (doc, source) => {
                                     commentCount: commentCount,
                                     shareCount: shareCount
                                 });
+                                console.log('Article added:', { title: el.querySelector("title").textContent, source: source.name, commentCount, shareCount });
                             })
                             .catch(error => console.error(`Error fetching article ${link}:`, error));
                         
@@ -128,6 +121,7 @@ const extractCounts = (doc, source) => {
                 <tbody>
         `;
         news.forEach(item => {
+            console.log('Displaying item:', item);
             const popularityScore = calculatePopularityScore(item);
             html += `
                 <tr>
