@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const source of rssSources) {
             try {
                 const response = await fetch(`${corsProxy}${encodeURIComponent(source.url)}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const str = await response.text();
                 const data = new window.DOMParser().parseFromString(str, "text/xml");
                 const items = data.querySelectorAll("item");
@@ -31,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const rankNews = (news) => {
-        // Simple ranking based on recency
         return news.sort((a, b) => b.pubDate - a.pubDate);
     };
 
@@ -50,13 +50,35 @@ document.addEventListener('DOMContentLoaded', () => {
         newsContainer.innerHTML = html;
     };
 
-    fetchNews()
-        .then(rankNews)
-        .then(displayNews)
-        .catch(error => {
-            console.error('Error:', error);
-            newsContainer.innerHTML = '<p>Error loading news. Please try again later.</p>';
-        });
+    const loadNews = async () => {
+        newsContainer.innerHTML = '<p>Loading news...</p>';
+        try {
+            let news = await fetchNews();
+            if (news.length === 0) throw new Error('No news fetched');
+            news = rankNews(news);
+            displayNews(news);
+            localStorage.setItem('cachedNews', JSON.stringify(news));
+            localStorage.setItem('lastFetchTime', Date.now());
+        } catch (error) {
+            console.error('Error loading news:', error);
+            const cachedNews = localStorage.getItem('cachedNews');
+            if (cachedNews) {
+                displayNews(JSON.parse(cachedNews));
+                newsContainer.innerHTML += '<p>Showing cached news. Please refresh for latest updates.</p>';
+            } else {
+                newsContainer.innerHTML = '<p>Error loading news. Please try again later.</p>';
+            }
+        }
+    };
+
+    // Add a refresh button to the page
+    const refreshButton = document.createElement('button');
+    refreshButton.textContent = 'Refresh News';
+    refreshButton.onclick = loadNews;
+    document.body.insertBefore(refreshButton, newsContainer);
+
+    // Load news on page load
+    loadNews();
 });
 
 // Placeholder function for generating angles (to be implemented with ChatGPT API later)
