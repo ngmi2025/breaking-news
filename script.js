@@ -17,12 +17,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = new window.DOMParser().parseFromString(str, "text/xml");
                 const items = data.querySelectorAll("item");
                 items.forEach(el => {
-                    allNews.push({
-                        title: el.querySelector("title").textContent,
-                        link: el.querySelector("link").textContent,
-                        pubDate: new Date(el.querySelector("pubDate").textContent),
-                        source: source.name
-                    });
+                    const pubDate = new Date(el.querySelector("pubDate").textContent);
+                    if (Date.now() - pubDate <= 48 * 60 * 60 * 1000) { // Within last 48 hours
+                        allNews.push({
+                            title: el.querySelector("title").textContent,
+                            link: el.querySelector("link").textContent,
+                            pubDate: pubDate,
+                            source: source.name,
+                            views: Math.floor(Math.random() * 1000) // Mock view count
+                        });
+                    }
                 });
             } catch (error) {
                 console.error(`Error fetching news from ${source.name}:`, error);
@@ -32,21 +36,38 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const rankNews = (news) => {
-        return news.sort((a, b) => b.pubDate - a.pubDate);
+        // Rank based on a combination of recency and views
+        return news.sort((a, b) => {
+            const scoreA = a.views + (Date.now() - a.pubDate) / 3600000; // 1 hour = 1 view
+            const scoreB = b.views + (Date.now() - b.pubDate) / 3600000;
+            return scoreB - scoreA;
+        }).slice(0, 10); // Get top 10
     };
 
     const displayNews = (news) => {
-        let html = '';
+        let html = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Source</th>
+                        <th>Published</th>
+                        <th>Popularity</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
         news.forEach(item => {
             html += `
-                <div class="news-item">
-                    <h2><a href="${item.link}" target="_blank">${item.title}</a></h2>
-                    <p>Source: ${item.source} | Published: ${item.pubDate.toLocaleString()}</p>
-                    <button onclick="generateAngles('${item.title}')">Generate Angles</button>
-                    <div id="angles-${item.title.replace(/\s+/g, '-').toLowerCase()}"></div>
-                </div>
+                <tr>
+                    <td><a href="${item.link}" target="_blank">${item.title}</a></td>
+                    <td>${item.source}</td>
+                    <td>${item.pubDate.toLocaleString()}</td>
+                    <td>${item.views} views</td>
+                </tr>
             `;
         });
+        html += '</tbody></table>';
         newsContainer.innerHTML = html;
     };
 
@@ -80,9 +101,3 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load news on page load
     loadNews();
 });
-
-// Placeholder function for generating angles (to be implemented with ChatGPT API later)
-function generateAngles(title) {
-    const anglesContainer = document.getElementById(`angles-${title.replace(/\s+/g, '-').toLowerCase()}`);
-    anglesContainer.innerHTML = 'Generating angles... (This feature will be implemented with ChatGPT API in the future)';
-}
