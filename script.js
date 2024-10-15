@@ -7,30 +7,41 @@ document.addEventListener('DOMContentLoaded', () => {
         { url: 'https://viewfromthewing.com/feed/', name: 'View from the Wing' },
     ];
 
-    const extractCounts = (doc, source) => {
-        let commentCount = 0;
-        let shareCount = 0;
+  const extractCounts = (doc, source) => {
+    let commentCount = 0;
+    let shareCount = 0;
 
-        if (source === 'One Mile at a Time') {
-            const commentCountEl = doc.querySelector('.post-comments.text-warning.number-of-comments .number');
-            commentCount = commentCountEl ? parseInt(commentCountEl.textContent) : 0;
-            console.log('OMAAT Comment Count:', commentCount);
-        } else if (source === 'Frequent Miler' || source === 'View from the Wing') {
-            const shareCountEl = doc.querySelector('.st-total .st-label');
-            shareCount = shareCountEl ? parseInt(shareCountEl.textContent) : 0;
+    if (source === 'One Mile at a Time') {
+        const commentCountEl = doc.querySelector('.post-comments.text-warning.number-of-comments .number');
+        commentCount = commentCountEl ? parseInt(commentCountEl.textContent) : 0;
+        console.log('OMAAT Comment Count:', commentCount);
+        // Note: We don't have share count information for One Mile at a Time
+    } else if (source === 'Frequent Miler' || source === 'View from the Wing') {
+        // Extract share count
+        const shareCountEl = doc.querySelector('.st-total .st-label');
+        if (shareCountEl) {
+            shareCount = parseInt(shareCountEl.textContent) || 0;
             console.log(`${source} Share Count:`, shareCount);
-            
-            const commentCountEl = doc.querySelector('.td-post-comments');
-            if (commentCountEl) {
-                const commentText = commentCountEl.textContent.trim();
-                commentCount = parseInt(commentText) || 0;
-            }
-            console.log(`${source} Comment Count:`, commentCount);
+        } else {
+            console.log(`${source} Share Count element not found`);
         }
+        
+        // Extract comment count
+        let commentCountEl;
+        if (source === 'Frequent Miler') {
+            commentCountEl = doc.querySelector('.td-post-comments');
+        } else { // View from the Wing
+            commentCountEl = doc.querySelector('.comment-count');
+        }
+        if (commentCountEl) {
+            const commentText = commentCountEl.textContent.trim();
+            commentCount = parseInt(commentText) || 0;
+        }
+        console.log(`${source} Comment Count:`, commentCount);
+    }
 
-        return { commentCount, shareCount };
-    };
-
+    return { commentCount, shareCount };
+};
     const fetchNews = async () => {
         let allNews = [];
         const fetchPromises = [];
