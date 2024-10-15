@@ -50,9 +50,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <thead>
                     <tr>
                         <th>Title</th>
+                        <th>Published Date</th>
                         <th>Source</th>
-                        <th>Published</th>
-                        <th>Popularity</th>
+                        <th>Hits</th>
+                        <th>Generate Angle</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -61,9 +62,10 @@ document.addEventListener('DOMContentLoaded', () => {
             html += `
                 <tr>
                     <td><a href="${item.link}" target="_blank">${item.title}</a></td>
-                    <td>${item.source}</td>
                     <td>${item.pubDate.toLocaleString()}</td>
-                    <td>${item.views} views</td>
+                    <td>${item.source}</td>
+                    <td>${item.views}</td>
+                    <td><button onclick="generateAngles('${item.title}')">Generate</button></td>
                 </tr>
             `;
         });
@@ -101,3 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load news on page load
     loadNews();
 });
+
+// Placeholder function for generating angles (to be implemented with ChatGPT API later)
+function generateAngles(title) {
+    alert(`Generating angles for: ${title}\n\nThis feature will be implemented with ChatGPT API in the future.`);
+}
