@@ -1,0 +1,28 @@
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+}
+
+h1 {
+    color: #333;
+}
+
+.news-item {
+    border-bottom: 1px solid #ccc;
+    padding: 10px 0;
+}
+
+.news-item h2 {
+    margin-bottom: 5px;
+}
+
+.news-item a {
+    color: #1a73e8;
+    text-decoration: none;
+}
+
+.news-item a:hover {
+    text-decoration: underline;
+}
