@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const rssSources = [
         { url: 'https://onemileatatime.com/feed/', name: 'One Mile at a Time' },
         { url: 'https://thepointsguy.com/feed/', name: 'The Points Guy' },
+        { url: 'https://frequentmiler.com/feed/', name: 'Frequent Miler' }, // Add Frequent Miler
         // Add more RSS feeds here
     ];
 
@@ -36,53 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         return allNews;
-    };
-
-    const calculatePopularityScore = (article) => {
-        const hoursAgo = (Date.now() - article.pubDate) / 3600000;
-        const recencyScore = Math.max(0, 48 - hoursAgo) / 48; // 0 to 1, higher for more recent
-        const engagementScore = (article.views + article.commentCount * 10) / 1000; // Assuming comments are more valuable
-        return recencyScore * 0.3 + engagementScore * 0.7; // Weighted combination
-    };
-
-    const rankNews = (news) => {
-        return news.sort((a, b) => {
-            const scoreA = calculatePopularityScore(a);
-            const scoreB = calculatePopularityScore(b);
-            return scoreB - scoreA;
-        }).slice(0, 10); // Get top 10
-    };
-
-    const displayNews = (news) => {
-        let html = `
-            <table>
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Published Date</th>
-                        <th>Source</th>
-                        <th>Comments</th>
-                        <th>Popularity</th>
-                        <th>Generate Angle</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-        news.forEach(item => {
-            const popularityScore = calculatePopularityScore(item);
-            html += `
-                <tr>
-                    <td><a href="${item.link}" target="_blank">${item.title}</a></td>
-                    <td>${item.pubDate.toLocaleString()}</td>
-                    <td>${item.source}</td>
-                    <td>${item.commentCount}</td>
-                    <td>${popularityScore.toFixed(2)}</td>
-                    <td><button onclick="generateAngles('${item.title}')">Generate</button></td>
-                </tr>
-            `;
-        });
-        html += '</tbody></table>';
-        newsContainer.innerHTML = html;
     };
 
     // ... rest of the code remains the same
