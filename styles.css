@@ -17,28 +17,39 @@ p {
 }
 
 #news-container {
-    max-width: 800px;
+    max-width: 1000px;
     margin: 0 auto;
+    overflow-x: auto;
 }
 
-.news-item {
+table {
+    width: 100%;
+    border-collapse: collapse;
     background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 15px;
-    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-.news-item h2 {
-    margin-bottom: 5px;
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
 }
 
-.news-item a {
+th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+tr:hover {
+    background-color: #f5f5f5;
+}
+
+a {
     color: #1a73e8;
     text-decoration: none;
 }
 
-.news-item a:hover {
+a:hover {
     text-decoration: underline;
 }
 
@@ -49,9 +60,9 @@ button {
     padding: 10px 20px;
     text-align: center;
     text-decoration: none;
-    display: inline-block;
+    display: block;
     font-size: 16px;
-    margin: 4px 2px;
+    margin: 20px auto;
     cursor: pointer;
     border-radius: 5px;
 }
