@@ -6,43 +6,58 @@ document.addEventListener('DOMContentLoaded', () => {
         { url: 'https://thepointsguy.com/feed/', name: 'The Points Guy' },
         { url: 'https://frequentmiler.com/feed/', name: 'Frequent Miler' },
     ];
+const fetchNews = async () => {
+    let allNews = [];
+    for (const source of rssSources) {
+        try {
+            const response = await fetch(`${corsProxy}${encodeURIComponent(source.url)}`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const str = await response.text();
+            const data = new window.DOMParser().parseFromString(str, "text/xml");
+            const items = data.querySelectorAll("item");
+            items.forEach(el => {
+                const pubDate = new Date(el.querySelector("pubDate").textContent);
+                if (Date.now() - pubDate <= 48 * 60 * 60 * 1000) { // Within last 48 hours
+                    let commentCount = 0;
+                    let shareCount = 0;
 
-    const fetchNews = async () => {
-        let allNews = [];
-        for (const source of rssSources) {
-            try {
-                const response = await fetch(`${corsProxy}${encodeURIComponent(source.url)}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const str = await response.text();
-                const data = new window.DOMParser().parseFromString(str, "text/xml");
-                const items = data.querySelectorAll("item");
-                items.forEach(el => {
-                    const pubDate = new Date(el.querySelector("pubDate").textContent);
-                    if (Date.now() - pubDate <= 48 * 60 * 60 * 1000) { // Within last 48 hours
-                        const commentCount = el.querySelectorAll("comment").length;
-                        const updateDate = el.querySelector("atom\\:updated") ? 
-                            new Date(el.querySelector("atom\\:updated").textContent) : pubDate;
-                        const isFeatured = el.querySelector("category[domain='featured']") !== null;
-                        const shareCount = parseInt(el.querySelector("shareCount") ? el.querySelector("shareCount").textContent : "0");
-                        allNews.push({
-                            title: el.querySelector("title").textContent,
-                            link: el.querySelector("link").textContent,
-                            pubDate: pubDate,
-                            updateDate: updateDate,
-                            source: source.name,
-                            commentCount: commentCount,
-                            isFeatured: isFeatured,
-                            shareCount: shareCount
-                        });
+                    // Parse comments
+                    const commentEl = el.querySelector("slash\\:comments, wp\\:comment_count");
+                    if (commentEl) {
+                        commentCount = parseInt(commentEl.textContent) || 0;
                     }
-                });
-            } catch (error) {
-                console.error(`Error fetching news from ${source.name}:`, error);
-            }
-        }
-        return allNews;
-    };
 
+                    // Parse shares (this might need adjustment based on actual feed structure)
+                    const contentEl = el.querySelector("content\\:encoded");
+                    if (contentEl) {
+                        const shareMatch = contentEl.textContent.match(/(\d+)\s+shares/i);
+                        if (shareMatch) {
+                            shareCount = parseInt(shareMatch[1]) || 0;
+                        }
+                    }
+
+                    const updateDate = el.querySelector("atom\\:updated") ? 
+                        new Date(el.querySelector("atom\\:updated").textContent) : pubDate;
+                    const isFeatured = el.querySelector("category[domain='featured']") !== null;
+
+                    allNews.push({
+                        title: el.querySelector("title").textContent,
+                        link: el.querySelector("link").textContent,
+                        pubDate: pubDate,
+                        updateDate: updateDate,
+                        source: source.name,
+                        commentCount: commentCount,
+                        shareCount: shareCount,
+                        isFeatured: isFeatured
+                    });
+                }
+            });
+        } catch (error) {
+            console.error(`Error fetching news from ${source.name}:`, error);
+        }
+    }
+    return allNews;
+};
     const calculatePopularityScore = (article) => {
         const hoursAgo = (Date.now() - article.pubDate) / 3600000;
         const recencyScore = Math.max(0, 48 - hoursAgo) / 48; // 0 to 1, higher for more recent
