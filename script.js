@@ -61,27 +61,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         const link = el.querySelector("link").textContent;
                         console.log(`Fetching article page: ${link}`);
                         
-                        const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
-                            .then(response => response.text())
-                            .then(html => {
-                                const parser = new DOMParser();
-                                const doc = parser.parseFromString(html, 'text/html');
-                                
-                                const { commentCount, shareCount } = extractCounts(doc, source.name);
-                                
-                                console.log(`Article parsed: Comments - ${commentCount}, Shares - ${shareCount}`);
+const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
+    .then(response => response.text())
+    .then(html => {
+        return new Promise(resolve => {
+            setTimeout(() => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                const { commentCount, shareCount } = extractCounts(doc, source.name);
+                
+                console.log(`Article parsed: Comments - ${commentCount}, Shares - ${shareCount}`);
 
-                                allNews.push({
-                                    title: el.querySelector("title").textContent,
-                                    link: link,
-                                    pubDate: pubDate,
-                                    source: source.name,
-                                    commentCount: commentCount,
-                                    shareCount: shareCount
-                                });
-                                console.log('Article added:', { title: el.querySelector("title").textContent, source: source.name, commentCount, shareCount });
-                            })
-                            .catch(error => console.error(`Error fetching article ${link}:`, error));
+                resolve({
+                    title: el.querySelector("title").textContent,
+                    link: link,
+                    pubDate: pubDate,
+                    source: source.name,
+                    commentCount: commentCount,
+                    shareCount: shareCount
+                });
+            }, 2000); // 2 second delay
+        });
+    })
+    .catch(error => console.error(`Error fetching article ${link}:`, error));
                         
                         fetchPromises.push(fetchPromise);
                     }
