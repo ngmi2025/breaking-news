@@ -7,41 +7,49 @@ document.addEventListener('DOMContentLoaded', () => {
         { url: 'https://viewfromthewing.com/feed/', name: 'View from the Wing' },
     ];
 
-  const extractCounts = (doc, source) => {
-    let commentCount = 0;
-    let shareCount = 0;
+    const fetchShareCounts = (url) => {
+        return new Promise((resolve) => {
+            if (typeof __sharethis__ !== 'undefined' && __sharethis__.api) {
+                __sharethis__.api.getShareCounts(url, (counts) => {
+                    console.log('ShareThis counts for', url, ':', counts);
+                    resolve(counts.total || 0);
+                });
+            } else {
+                console.log('ShareThis API not available');
+                resolve(0);
+            }
+        });
+    };
 
-    if (source === 'One Mile at a Time') {
-        const commentCountEl = doc.querySelector('.post-comments.text-warning.number-of-comments .number');
-        commentCount = commentCountEl ? parseInt(commentCountEl.textContent) : 0;
-        console.log('OMAAT Comment Count:', commentCount);
-        // Note: We don't have share count information for One Mile at a Time
-    } else if (source === 'Frequent Miler' || source === 'View from the Wing') {
-        // Extract share count
-        const shareCountEl = doc.querySelector('.st-total .st-label');
-        if (shareCountEl) {
-            shareCount = parseInt(shareCountEl.textContent) || 0;
-            console.log(`${source} Share Count:`, shareCount);
-        } else {
-            console.log(`${source} Share Count element not found`);
-        }
-        
-        // Extract comment count
-        let commentCountEl;
-        if (source === 'Frequent Miler') {
-            commentCountEl = doc.querySelector('.td-post-comments');
-        } else { // View from the Wing
-            commentCountEl = doc.querySelector('.comment-count');
-        }
-        if (commentCountEl) {
-            const commentText = commentCountEl.textContent.trim();
-            commentCount = parseInt(commentText) || 0;
-        }
-        console.log(`${source} Comment Count:`, commentCount);
-    }
+    const extractCounts = async (doc, source, url) => {
+        let commentCount = 0;
+        let shareCount = 0;
 
-    return { commentCount, shareCount };
-};
+        if (source === 'One Mile at a Time') {
+            const commentCountEl = doc.querySelector('.post-comments.text-warning.number-of-comments .number');
+            commentCount = commentCountEl ? parseInt(commentCountEl.textContent) : 0;
+            console.log('OMAAT Comment Count:', commentCount);
+        } else if (source === 'Frequent Miler' || source === 'View from the Wing') {
+            let commentCountEl;
+            if (source === 'Frequent Miler') {
+                commentCountEl = doc.querySelector('.td-post-comments');
+            } else { // View from the Wing
+                commentCountEl = doc.querySelector('.comment-count');
+            }
+            if (commentCountEl) {
+                const commentText = commentCountEl.textContent.trim();
+                commentCount = parseInt(commentText) || 0;
+            }
+            console.log(`${source} Comment Count:`, commentCount);
+        }
+
+        // Fetch share count
+        shareCount = await fetchShareCounts(url);
+        console.log(`${source} Share Count:`, shareCount);
+
+        return { commentCount, shareCount };
+    };
+
     const fetchNews = async () => {
         let allNews = [];
         const fetchPromises = [];
@@ -61,30 +69,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         const link = el.querySelector("link").textContent;
                         console.log(`Fetching article page: ${link}`);
                         
-const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
-    .then(response => response.text())
-    .then(html => {
-        return new Promise(resolve => {
-            setTimeout(() => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                
-                const { commentCount, shareCount } = extractCounts(doc, source.name);
-                
-                console.log(`Article parsed: Comments - ${commentCount}, Shares - ${shareCount}`);
+                        const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
+                            .then(response => response.text())
+                            .then(async html => {
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(html, 'text/html');
+                                
+                                const { commentCount, shareCount } = await extractCounts(doc, source.name, link);
+                                
+                                console.log(`Article parsed: Comments - ${commentCount}, Shares - ${shareCount}`);
 
-                resolve({
-                    title: el.querySelector("title").textContent,
-                    link: link,
-                    pubDate: pubDate,
-                    source: source.name,
-                    commentCount: commentCount,
-                    shareCount: shareCount
-                });
-            }, 5000); // 5 second delay
-        });
-    })
-    .catch(error => console.error(`Error fetching article ${link}:`, error));
+                                allNews.push({
+                                    title: el.querySelector("title").textContent,
+                                    link: link,
+                                    pubDate: pubDate,
+                                    source: source.name,
+                                    commentCount: commentCount,
+                                    shareCount: shareCount
+                                });
+                            })
+                            .catch(error => console.error(`Error fetching article ${link}:`, error));
                         
                         fetchPromises.push(fetchPromise);
                     }
@@ -99,13 +103,14 @@ const fetchPromise = fetch(`${corsProxy}${encodeURIComponent(link)}`)
         return allNews;
     };
 
-const calculatePopularityScore = (article) => {
-    const commentScore = article.commentCount || 0;
-    const shareScore = (article.shareCount || 0) * 0.1; // Giving less weight to shares as they're often more numerous
-    
-    // Weighted sum of scores, removing recency
-    return (commentScore * 0.6) + (shareScore * 0.4);
-};
+    const calculatePopularityScore = (article) => {
+        const commentScore = article.commentCount || 0;
+        const shareScore = (article.shareCount || 0) * 0.1; // Giving less weight to shares as they're often more numerous
+        
+        // Weighted sum of scores, removing recency
+        return (commentScore * 0.6) + (shareScore * 0.4);
+    };
+
     const rankNews = (news) => {
         return news.sort((a, b) => {
             const scoreA = calculatePopularityScore(a);
@@ -114,53 +119,51 @@ const calculatePopularityScore = (article) => {
         }).slice(0, 20); // Get top 20
     };
 
-const displayNews = (news) => {
-    console.log('News to display:', news);
-    let html = `
-        <table>
-            <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>Published Date</th>
-                    <th>Source</th>
-                    <th>Comments</th>
-                    <th>Shares</th>
-                    <th>Featured</th>
-                    <th>Popularity</th>
-                    <th>Generate Angle</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-    news.slice(0, 20).forEach(item => {
-        console.log('Displaying item:', item);
-        const commentCount = item.commentCount !== undefined ? item.commentCount : 0;
-        const shareCount = item.shareCount !== undefined ? item.shareCount : 0;
-        const popularityScore = calculatePopularityScore({...item, commentCount, shareCount});
-        let popularityRank;
-        if (popularityScore > 50) {
-            popularityRank = 'High';
-        } else if (popularityScore > 10) {
-            popularityRank = 'Medium';
-        } else {
-            popularityRank = 'Low';
-        }
-        html += `
-            <tr>
-                <td><a href="${item.link}" target="_blank">${item.title}</a></td>
-                <td>${new Date(item.pubDate).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                <td>${item.source}</td>
-                <td>${commentCount}</td>
-                <td>${shareCount}</td>
-                <td>${item.isFeatured ? 'Yes' : 'No'}</td>
-                <td>${popularityRank}</td>
-                <td><button onclick="generateAngles('${item.title}')">Generate</button></td>
-            </tr>
+    const displayNews = (news) => {
+        console.log('News to display:', news);
+        let html = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Published Date</th>
+                        <th>Source</th>
+                        <th>Comments</th>
+                        <th>Shares</th>
+                        <th>Featured</th>
+                        <th>Popularity</th>
+                        <th>Generate Angle</th>
+                    </tr>
+                </thead>
+                <tbody>
         `;
-    });
-    html += '</tbody></table>';
-    newsContainer.innerHTML = html;
-};
+        news.forEach(item => {
+            console.log('Displaying item:', item);
+            const popularityScore = calculatePopularityScore(item);
+            let popularityRank;
+            if (popularityScore > 50) {
+                popularityRank = 'High';
+            } else if (popularityScore > 10) {
+                popularityRank = 'Medium';
+            } else {
+                popularityRank = 'Low';
+            }
+            html += `
+                <tr>
+                    <td><a href="${item.link}" target="_blank">${item.title}</a></td>
+                    <td>${new Date(item.pubDate).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                    <td>${item.source}</td>
+                    <td>${item.commentCount}</td>
+                    <td>${item.shareCount}</td>
+                    <td>${item.isFeatured ? 'Yes' : 'No'}</td>
+                    <td>${popularityRank}</td>
+                    <td><button onclick="generateAngles('${item.title}')">Generate</button></td>
+                </tr>
+            `;
+        });
+        html += '</tbody></table>';
+        newsContainer.innerHTML = html;
+    };
 
     const loadNews = async () => {
         newsContainer.innerHTML = '<p>Loading... please wait and don\'t refresh</p>';
